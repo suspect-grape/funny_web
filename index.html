@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ffd400">
+<title>hi</title>
+<style>
+  :root {
+    --yellow: #ffd400;
+    --ink: #111;
+    --pink: #ff3d7f;
+    --blue: #2b6bff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--yellow); color: var(--ink);
+    font-family: "Arial Black", "Helvetica Neue", Impact, system-ui, sans-serif;
+    touch-action: manipulation; user-select: none; -webkit-user-select: none;
+  }
+  .screen {
+    position: fixed; inset: 0;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    gap: 1.25rem; padding: max(1.5rem, env(safe-area-inset-top)) 1.5rem max(1.5rem, env(safe-area-inset-bottom));
+    text-align: center;
+  }
+  .screen.active { display: flex; animation: pop .35s cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform: scale(.85); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  h1 { font-size: clamp(5rem, 32vw, 11rem); margin: 0; line-height: .9; letter-spacing: -.04em; }
+  h2 { font-size: clamp(2rem, 10vw, 3.5rem); margin: 0; line-height: 1; }
+  p  { font-family: system-ui, sans-serif; font-weight: 700; font-size: 1.15rem; margin: 0; max-width: 22rem; }
+  .small { font-size: .85rem; opacity: .6; font-weight: 600; }
+
+  button {
+    font: inherit; font-size: 1.5rem; color: var(--ink); background: #fff;
+    border: 4px solid var(--ink); border-radius: 18px; padding: .9rem 2.2rem;
+    box-shadow: 6px 6px 0 var(--ink); cursor: pointer;
+    transition: transform .08s, box-shadow .08s;
+  }
+  button:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0 var(--ink); }
+  .row { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+  .yes { background: #7dff8a; }
+  .no  { background: var(--pink); color: #fff; }
+
+  .wave { display: inline-block; animation: wave 1.2s ease-in-out infinite; transform-origin: 70% 70%; }
+  @keyframes wave { 0%,60%,100% { transform: rotate(0); } 10%,30% { transform: rotate(16deg); } 20%,40% { transform: rotate(-10deg); } }
+
+  /* No-path */
+  #notAde { background: var(--pink); color: #fff; }
+  #notAde button { color: var(--ink); }
+  .phone { font-size: 6rem; animation: shake .5s infinite; }
+  @keyframes shake { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+
+  /* Game */
+  #game { justify-content: flex-start; padding: 0; background: var(--blue); color: #fff; }
+  #hud {
+    width: 100%; display: flex; justify-content: space-between; align-items: center;
+    padding: max(1rem, env(safe-area-inset-top)) 1.25rem .5rem; font-size: 1.4rem; position: relative; z-index: 2;
+  }
+  #taunt {
+    position: relative; z-index: 2; min-height: 3.2rem; padding: 0 1rem;
+    font-family: system-ui, sans-serif; font-weight: 800; font-size: 1.2rem;
+  }
+  #arena { position: relative; flex: 1; width: 100%; }
+  #target {
+    position: absolute; left: 50%; top: 50%;
+    width: 96px; height: 96px; padding: 0; border-radius: 50%;
+    font-size: 2.6rem; line-height: 1; background: var(--yellow);
+    transition: left var(--speed, .9s) ease-in-out, top var(--speed, .9s) ease-in-out, width .2s, height .2s, font-size .2s;
+    translate: -50% -50%;
+  }
+  #bar { position: absolute; left: 0; bottom: 0; height: 10px; background: var(--yellow); width: 100%; transition: width .1s linear; z-index: 2; }
+  .floater {
+    position: absolute; pointer-events: none; font-family: system-ui, sans-serif; font-weight: 900; font-size: 1.4rem;
+    animation: floatUp .7s ease-out forwards; translate: -50% -50%; z-index: 3;
+  }
+  @keyframes floatUp { to { transform: translateY(-60px); opacity: 0; } }
+
+  /* Fail */
+  #fail { background: #222; color: #fff; }
+  #fail button { color: var(--ink); }
+
+  /* Loading */
+  #loading { background: #fff; }
+  .track { width: min(80vw, 320px); height: 28px; border: 4px solid var(--ink); border-radius: 14px; overflow: hidden; background: #eee; }
+  .fill  { height: 100%; width: 0; background: repeating-linear-gradient(45deg, var(--pink) 0 14px, #ff7aa6 14px 28px); transition: width .4s; }
+  #loadMsg { min-height: 3rem; }
+
+  /* Finale */
+  #finale { background: #000; color: #fff; justify-content: center; gap: .9rem; overflow: hidden; }
+  #gifBox { width: min(78vw, 320px); aspect-ratio: 1; display: grid; place-items: center; position: relative; z-index: 2; }
+  #gifBox img { width: 100%; height: 100%; object-fit: cover; border-radius: 16px; border: 4px solid #fff; }
+  .bird {
+    font-size: min(46vw, 190px); line-height: 1;
+    animation: birdIn 1s cubic-bezier(.2,1.8,.4,1) both, bob .5s ease-in-out 1s infinite alternate;
+    filter: drop-shadow(0 0 24px var(--pink));
+  }
+  @keyframes birdIn { from { transform: scale(0) rotate(-540deg); } to { transform: scale(1) rotate(0); } }
+  @keyframes bob { from { transform: translateY(0) rotate(-6deg); } to { transform: translateY(-14px) rotate(6deg); } }
+  .big {
+    font-size: clamp(2.8rem, 15vw, 5.5rem); line-height: .95; margin: 0; position: relative; z-index: 2;
+    background: linear-gradient(90deg, #ff3d7f, #ffd400, #7dff8a, #2b6bff, #ff3d7f); background-size: 300% 100%;
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    animation: rainbow 2s linear infinite, throb .6s ease-in-out infinite alternate;
+  }
+  @keyframes rainbow { to { background-position: 300% 0; } }
+  @keyframes throb { to { transform: scale(1.06); } }
+  #finale p, #finale .row { position: relative; z-index: 2; }
+  #finale button { font-size: 1.1rem; padding: .7rem 1.3rem; }
+  .confetti { position: absolute; top: -10vh; font-size: 2rem; pointer-events: none; animation: fall linear forwards; z-index: 1; }
+  @keyframes fall { to { transform: translateY(125vh) rotate(720deg); } }
+  .reveal { opacity: 0; animation: fadeIn .5s ease-out forwards; }
+  @keyframes fadeIn { to { opacity: 1; } }
+</style>
+</head>
+<body>
+
+<!-- 1. Hi -->
+<section class="screen active" id="hi">
+  <h1>hi <span class="wave">👋</span></h1>
+  <button id="startBtn">START</button>
+</section>
+
+<!-- 2. Are you Ade? -->
+<section class="screen" id="ask">
+  <h2>Quick question.</h2>
+  <p>Are you Ade?</p>
+  <div class="row">
+    <button class="yes" id="yesBtn">YES</button>
+    <button class="no" id="noBtn">NO</button>
+  </div>
+  <p class="small">Be honest. We'll know.</p>
+</section>
+
+<!-- 2b. Not Ade -->
+<section class="screen" id="notAde">
+  <div class="phone">📱</div>
+  <h2>Pass the phone to Ade.</h2>
+  <p>This is a private matter between us and Ade. Go on. Hand it over.</p>
+  <button id="handedBtn">Ok, Ade has the phone</button>
+</section>
+
+<!-- 3. Game -->
+<section class="screen" id="game">
+  <div id="hud"><span id="score">0 / 10</span><span id="clock">20.0s</span></div>
+  <div id="taunt">Tap the face 10 times. Easy, right?</div>
+  <div id="arena"><button id="target" aria-label="tap me">😜</button></div>
+  <div id="bar"></div>
+</section>
+
+<!-- 3b. Fail -->
+<section class="screen" id="fail">
+  <h2 id="failTitle">Too slow, Ade.</h2>
+  <p id="failMsg"></p>
+  <button id="retryBtn">Try again 😢</button>
+</section>
+
+<!-- 4. Fake prize loading -->
+<section class="screen" id="loading">
+  <h2>🏆 YOU WON! 🏆</h2>
+  <p>Preparing your prize…</p>
+  <div class="track"><div class="fill" id="fill"></div></div>
+  <p id="loadMsg" class="small"></p>
+</section>
+
+<!-- 5. Finale -->
+<section class="screen" id="finale">
+  <div id="gifBox"></div>
+  <p class="reveal" style="animation-delay:1.6s">On behalf of the whole family, a heartfelt message:</p>
+  <h2 class="big reveal" style="animation-delay:2.4s">FUCK YOU, ADE.</h2>
+  <p class="reveal small" id="stats" style="animation-delay:3.2s; opacity:0"></p>
+  <div class="row reveal" style="animation-delay:4s">
+    <button id="againBtn">Demand a recount</button>
+    <button id="shareBtn">Share my shame</button>
+  </div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+const show = id => {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(id).classList.add('active');
+};
+const buzz = p => navigator.vibrate && navigator.vibrate(p);
+const pick = a => a[Math.floor(Math.random() * a.length)];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* ---------- Audio (no files needed) ---------- */
+let ctx;
+const audio = () => (ctx ||= new (window.AudioContext || window.webkitAudioContext)());
+function tone(freq, start, dur, type = 'square', vol = .15, slideTo) {
+  const a = audio(), o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.setValueAtTime(freq, a.currentTime + start);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, a.currentTime + start + dur);
+  g.gain.setValueAtTime(vol, a.currentTime + start);
+  g.gain.exponentialRampToValueAtTime(.001, a.currentTime + start + dur);
+  o.connect(g).connect(a.destination); o.start(a.currentTime + start); o.stop(a.currentTime + start + dur);
+}
+const blip  = n => tone(300 + n * 60, 0, .08);
+const boop  = () => tone(120, 0, .15, 'sawtooth', .1, 60);
+const fanfare = () => [523, 659, 784, 1047].forEach((f, i) => tone(f, i * .12, .25, 'triangle', .2));
+const sadTrombone = () => {
+  [[392, 0, .45], [370, .5, .45], [349, 1, .45]].forEach(([f, s, d]) => tone(f, s, d, 'sawtooth', .12));
+  tone(330, 1.5, 1.4, 'sawtooth', .12, 260);
+};
+const raspberry = () => { for (let i = 0; i < 18; i++) tone(90 + Math.random() * 40, 2.3 + i * .04, .06, 'sawtooth', .18); };
+
+/* ---------- Flow ---------- */
+$('startBtn').onclick  = () => { audio(); blip(0); show('ask'); };
+$('noBtn').onclick     = () => { boop(); buzz(200); show('notAde'); };
+$('handedBtn').onclick = () => { blip(2); show('ask'); };
+$('yesBtn').onclick    = () => { fanfare(); startGame(); };
+$('retryBtn').onclick  = () => startGame();
+$('againBtn').onclick  = () => {
+  $('stats').textContent = 'Recount complete. Result: still fuck you, Ade. 🖕';
+  sadTrombone();
+};
+$('shareBtn').onclick = async () => {
+  const text = `I'm Ade. I tapped a face 10 times and the internet told me to fuck off. 🖕`;
+  try {
+    if (navigator.share) await navigator.share({ text, url: location.href });
+    else { await navigator.clipboard.writeText(text + ' ' + location.href); $('shareBtn').textContent = 'Copied 🤡'; }
+  } catch {}
+};
+
+/* ---------- Game ---------- */
+const GOAL = 10, TIME = 20;
+const TAUNTS = [
+  'Lucky.', 'Steady on, grandad.', "Don't drop your biscuit 🍪", 'My nan taps faster. She\'s dead.',
+  'Halfway! Mind your hip 🦴', 'Ooh, sweaty palms?', 'Getting quicker, isn\'t it Ade?',
+  'Nearly there, old timer 👴', 'ONE MORE. Don\'t cry.', '',
+];
+const MISSES = ['MISS 🤣', 'Nope!', 'Glasses on, Ade 👓', 'Whoosh', 'Embarrassing', 'Was that a tap or a twitch?'];
+const FACES = ['😜', '🤪', '😝', '🙃', '😏', '🤭', '😬', '🫣', '🥴', '😵‍💫'];
+
+let score, misses, startT, timer, mover, running;
+
+function startGame() {
+  show('game');
+  score = 0; misses = 0; running = true;
+  $('score').textContent = `0 / ${GOAL}`;
+  $('taunt').textContent = 'Tap the face 10 times. Easy, right?';
+  setSize(96);
+  $('target').style.setProperty('--speed', '.9s');
+  $('target').style.left = '50%'; $('target').style.top = '50%';
+  startT = performance.now();
+  clearInterval(timer); clearTimeout(mover);
+  timer = setInterval(tick, 50);
+  scheduleMove(1100);
+}
+
+function setSize(px) {
+  const t = $('target');
+  t.style.width = t.style.height = px + 'px';
+  t.style.fontSize = px * .45 + 'px';
+}
+
+function moveTarget() {
+  const r = $('arena').getBoundingClientRect(), t = $('target'), half = t.offsetWidth / 2 + 8;
+  t.style.left = half + Math.random() * (r.width  - half * 2) + 'px';
+  t.style.top  = half + Math.random() * (r.height - half * 2) + 'px';
+}
+
+function scheduleMove(ms) {
+  mover = setTimeout(() => { if (!running) return; moveTarget(); scheduleMove(ms); }, ms);
+}
+
+function floater(x, y, text, color = '#fff') {
+  const f = document.createElement('div');
+  f.className = 'floater'; f.textContent = text; f.style.left = x + 'px'; f.style.top = y + 'px'; f.style.color = color;
+  $('arena').appendChild(f); setTimeout(() => f.remove(), 700);
+}
+
+function tick() {
+  const left = Math.max(0, TIME - (performance.now() - startT) / 1000);
+  $('clock').textContent = left.toFixed(1) + 's';
+  $('bar').style.width = (left / TIME * 100) + '%';
+  if (left <= 0) endGame(false);
+}
+
+$('target').addEventListener('pointerdown', e => {
+  if (!running) return;
+  e.stopPropagation(); e.preventDefault();
+  score++; blip(score); buzz(30);
+  const ar = $('arena').getBoundingClientRect();
+  floater(e.clientX - ar.left, e.clientY - ar.top, '+1', '#ffd400');
+  $('score').textContent = `${score} / ${GOAL}`;
+  $('taunt').textContent = TAUNTS[score - 1];
+  $('target').textContent = FACES[score % FACES.length];
+  if (score >= GOAL) return endGame(true);
+
+  // Harder every hit: smaller, faster, and it dodges immediately.
+  setSize(96 - score * 5.5);
+  const speed = Math.max(.25, .9 - score * .07);
+  $('target').style.setProperty('--speed', speed + 's');
+  clearTimeout(mover); moveTarget(); scheduleMove(speed * 1000 + 150);
+});
+
+$('arena').addEventListener('pointerdown', e => {
+  if (!running) return;
+  misses++; boop(); buzz([20, 30, 20]);
+  const ar = $('arena').getBoundingClientRect();
+  floater(e.clientX - ar.left, e.clientY - ar.top, pick(MISSES), '#ff9fbf');
+});
+
+function endGame(won) {
+  running = false; clearInterval(timer); clearTimeout(mover);
+  const secs = ((performance.now() - startT) / 1000).toFixed(1);
+  if (won) return prize(secs);
+  sadTrombone(); buzz([300, 100, 300]);
+  $('failTitle').textContent = pick(['Too slow, Ade.', 'Oh dear, Ade.', 'Pathetic, Ade.']);
+  $('failMsg').textContent = `${score}/${GOAL} taps and ${misses} misses. ` +
+    pick(['A toddler got 10. We checked.', 'The dog did better. With its nose.', 'Have you tried using your fingers?']);
+  show('fail');
+}
+
+/* ---------- Fake prize ---------- */
+async function prize(secs) {
+  show('loading');
+  const steps = [
+    [18, 'Polishing trophy…'], [37, 'Consulting the family…'], [55, 'Checking with your daughter…'],
+    [71, 'She said "go on then" 👍'], [88, 'Wrapping prize…'], [99, 'Nearly…'],
+    [99, 'Nearly…'], [99, 'Still nearly…'], [100, 'Here it comes!'],
+  ];
+  for (const [pct, msg] of steps) { $('fill').style.width = pct + '%'; $('loadMsg').textContent = msg; await sleep(800); }
+  finale(secs);
+}
+
+function finale(secs) {
+  show('finale');
+  // Drop a file called finale.gif next to index.html to use your own GIF; otherwise the animated bird plays.
+  const box = $('gifBox');
+  const img = new Image();
+  img.onload = () => { box.innerHTML = ''; box.appendChild(img); };
+  img.src = 'finale.gif';
+  box.innerHTML = '<div class="bird">🖕</div>';
+
+  const rank = secs < 8 ? 'Suspiciously Good (cheater)' : secs < 12 ? 'Sweaty Grandad' : secs < 16 ? 'Retired Sloth' : 'Fossil';
+  $('stats').textContent = `${GOAL} taps in ${secs}s with ${misses} misses. Official rank: ${rank}. Prize: this.`;
+  sadTrombone(); raspberry(); buzz([100, 50, 100, 50, 400]);
+
+  const bits = ['🖕', '🎉', '💩', '🤡', '🖕', '🏆', '👴'];
+  for (let i = 0; i < 60; i++) {
+    const c = document.createElement('div');
+    c.className = 'confetti'; c.textContent = pick(bits);
+    c.style.left = Math.random() * 100 + 'vw';
+    c.style.animationDuration = 2.5 + Math.random() * 3 + 's';
+    c.style.animationDelay = 1 + Math.random() * 4 + 's';
+    $('finale').appendChild(c); setTimeout(() => c.remove(), 9000);
+  }
+}
+</script>
+</body>
+</html>
