@@ -71,16 +71,11 @@
     transition: left var(--speed, .9s) ease-in-out, top var(--speed, .9s) ease-in-out, width .2s, height .2s, font-size .2s;
     translate: -50% -50%;
   }
-  #bar { position: absolute; left: 0; bottom: 0; height: 10px; background: var(--yellow); width: 100%; transition: width .1s linear; z-index: 2; }
   .floater {
     position: absolute; pointer-events: none; font-family: system-ui, sans-serif; font-weight: 900; font-size: 1.4rem;
     animation: floatUp .7s ease-out forwards; translate: -50% -50%; z-index: 3;
   }
   @keyframes floatUp { to { transform: translateY(-60px); opacity: 0; } }
-
-  /* Fail */
-  #fail { background: #222; color: #fff; }
-  #fail button { color: var(--ink); }
 
   /* Loading */
   #loading { background: #fff; }
@@ -144,17 +139,9 @@
 
 <!-- 3. Game -->
 <section class="screen" id="game">
-  <div id="hud"><span id="score">0 / 10</span><span id="clock">20.0s</span></div>
+  <div id="hud"><span id="score">0 / 10</span><span id="clock">0.0s</span></div>
   <div id="taunt">Tap the face 10 times. Easy, right?</div>
   <div id="arena"><button id="target" aria-label="tap me">😜</button></div>
-  <div id="bar"></div>
-</section>
-
-<!-- 3b. Fail -->
-<section class="screen" id="fail">
-  <h2 id="failTitle">Too slow, Ade.</h2>
-  <p id="failMsg"></p>
-  <button id="retryBtn">Try again 😢</button>
 </section>
 
 <!-- 4. Fake prize loading -->
@@ -212,7 +199,6 @@ $('startBtn').onclick  = () => { audio(); blip(0); show('ask'); };
 $('noBtn').onclick     = () => { boop(); buzz(200); show('notAde'); };
 $('handedBtn').onclick = () => { blip(2); show('ask'); };
 $('yesBtn').onclick    = () => { fanfare(); startGame(); };
-$('retryBtn').onclick  = () => startGame();
 $('againBtn').onclick  = () => {
   $('stats').textContent = 'Recount complete. Result: still fuck you, Ade. 🖕';
   sadTrombone();
@@ -226,29 +212,35 @@ $('shareBtn').onclick = async () => {
 };
 
 /* ---------- Game ---------- */
-const GOAL = 10, TIME = 20;
+const GOAL = 10;
 const TAUNTS = [
   'Lucky.', 'Steady on, grandad.', "Don't drop your biscuit 🍪", 'My nan taps faster. She\'s dead.',
   'Halfway! Mind your hip 🦴', 'Ooh, sweaty palms?', 'Getting quicker, isn\'t it Ade?',
   'Nearly there, old timer 👴', 'ONE MORE. Don\'t cry.', '',
 ];
 const MISSES = ['MISS 🤣', 'Nope!', 'Glasses on, Ade 👓', 'Whoosh', 'Embarrassing', 'Was that a tap or a twitch?'];
+const NAGS = [
+  [15, 'Take your time. Not like you\'ve got anywhere to be. 🫖'],
+  [30, 'Still going, Ade? Bless.'],
+  [45, 'Shall we call someone? 📞'],
+  [60, 'A full minute. The family is watching. 👀'],
+];
 const FACES = ['😜', '🤪', '😝', '🙃', '😏', '🤭', '😬', '🫣', '🥴', '😵‍💫'];
 
-let score, misses, startT, timer, mover, running;
+let score, misses, startT, timer, mover, running, nagged;
 
 function startGame() {
   show('game');
-  score = 0; misses = 0; running = true;
+  score = 0; misses = 0; nagged = 0; running = true;
   $('score').textContent = `0 / ${GOAL}`;
   $('taunt').textContent = 'Tap the face 10 times. Easy, right?';
-  setSize(96);
+  setSize(110);
   $('target').style.setProperty('--speed', '.9s');
   $('target').style.left = '50%'; $('target').style.top = '50%';
   startT = performance.now();
   clearInterval(timer); clearTimeout(mover);
   timer = setInterval(tick, 50);
-  scheduleMove(1100);
+  scheduleMove(1500);
 }
 
 function setSize(px) {
@@ -273,11 +265,11 @@ function floater(x, y, text, color = '#fff') {
   $('arena').appendChild(f); setTimeout(() => f.remove(), 700);
 }
 
+// No time limit - the clock just counts up so we can mock him with it later.
 function tick() {
-  const left = Math.max(0, TIME - (performance.now() - startT) / 1000);
-  $('clock').textContent = left.toFixed(1) + 's';
-  $('bar').style.width = (left / TIME * 100) + '%';
-  if (left <= 0) endGame(false);
+  const secs = (performance.now() - startT) / 1000;
+  $('clock').textContent = secs.toFixed(1) + 's';
+  if (nagged < NAGS.length && secs >= NAGS[nagged][0]) $('taunt').textContent = NAGS[nagged++][1];
 }
 
 $('target').addEventListener('pointerdown', e => {
@@ -289,13 +281,13 @@ $('target').addEventListener('pointerdown', e => {
   $('score').textContent = `${score} / ${GOAL}`;
   $('taunt').textContent = TAUNTS[score - 1];
   $('target').textContent = FACES[score % FACES.length];
-  if (score >= GOAL) return endGame(true);
+  if (score >= GOAL) return endGame();
 
-  // Harder every hit: smaller, faster, and it dodges immediately.
-  setSize(96 - score * 5.5);
-  const speed = Math.max(.25, .9 - score * .07);
+  // A bit harder every hit: smaller, faster, and it dodges immediately.
+  setSize(110 - score * 3.5);
+  const speed = Math.max(.5, .95 - score * .045);
   $('target').style.setProperty('--speed', speed + 's');
-  clearTimeout(mover); moveTarget(); scheduleMove(speed * 1000 + 150);
+  clearTimeout(mover); moveTarget(); scheduleMove(speed * 1000 + 600);
 });
 
 $('arena').addEventListener('pointerdown', e => {
@@ -305,15 +297,9 @@ $('arena').addEventListener('pointerdown', e => {
   floater(e.clientX - ar.left, e.clientY - ar.top, pick(MISSES), '#ff9fbf');
 });
 
-function endGame(won) {
+function endGame() {
   running = false; clearInterval(timer); clearTimeout(mover);
-  const secs = ((performance.now() - startT) / 1000).toFixed(1);
-  if (won) return prize(secs);
-  sadTrombone(); buzz([300, 100, 300]);
-  $('failTitle').textContent = pick(['Too slow, Ade.', 'Oh dear, Ade.', 'Pathetic, Ade.']);
-  $('failMsg').textContent = `${score}/${GOAL} taps and ${misses} misses. ` +
-    pick(['A toddler got 10. We checked.', 'The dog did better. With its nose.', 'Have you tried using your fingers?']);
-  show('fail');
+  prize(((performance.now() - startT) / 1000).toFixed(1));
 }
 
 /* ---------- Fake prize ---------- */
@@ -337,7 +323,7 @@ function finale(secs) {
   img.src = 'finale.gif';
   box.innerHTML = '<div class="bird">🖕</div>';
 
-  const rank = secs < 8 ? 'Suspiciously Good (cheater)' : secs < 12 ? 'Sweaty Grandad' : secs < 16 ? 'Retired Sloth' : 'Fossil';
+  const rank = secs < 8 ? 'Suspiciously Good (cheater)' : secs < 15 ? 'Sweaty Grandad' : secs < 30 ? 'Retired Sloth' : 'Fossil';
   $('stats').textContent = `${GOAL} taps in ${secs}s with ${misses} misses. Official rank: ${rank}. Prize: this.`;
   sadTrombone(); raspberry(); buzz([100, 50, 100, 50, 400]);
 
