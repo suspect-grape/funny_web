@@ -155,12 +155,10 @@
 <!-- 5. Finale -->
 <section class="screen" id="finale">
   <div id="gifBox"></div>
-  <p class="reveal" style="animation-delay:1.6s">On behalf of the whole family, a heartfelt message:</p>
-  <h2 class="big reveal" style="animation-delay:2.4s">FUCK YOU, ADE.</h2>
-  <p class="reveal small" id="stats" style="animation-delay:3.2s; opacity:0"></p>
-  <div class="row reveal" style="animation-delay:4s">
+  <h2 class="big reveal" style="animation-delay:1.6s">FUCK YOU, ADE.</h2>
+  <p class="reveal small" id="stats" style="animation-delay:2.4s; opacity:0"></p>
+  <div class="row reveal" style="animation-delay:3.2s">
     <button id="againBtn">Demand a recount</button>
-    <button id="shareBtn">Share my shame</button>
   </div>
 </section>
 
@@ -202,13 +200,6 @@ $('yesBtn').onclick    = () => { fanfare(); startGame(); };
 $('againBtn').onclick  = () => {
   $('stats').textContent = 'Recount complete. Result: still fuck you, Ade. 🖕';
   sadTrombone();
-};
-$('shareBtn').onclick = async () => {
-  const text = `I'm Ade. I tapped a face 10 times and the internet told me to fuck off. 🖕`;
-  try {
-    if (navigator.share) await navigator.share({ text, url: location.href });
-    else { await navigator.clipboard.writeText(text + ' ' + location.href); $('shareBtn').textContent = 'Copied 🤡'; }
-  } catch {}
 };
 
 /* ---------- Game ---------- */
