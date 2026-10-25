@@ -67,8 +67,8 @@
   #target {
     position: absolute; left: 50%; top: 50%;
     width: 96px; height: 96px; padding: 0; border-radius: 50%;
-    font-size: 2.6rem; line-height: 1; background: var(--yellow);
-    transition: left var(--speed, .9s) ease-in-out, top var(--speed, .9s) ease-in-out, width .2s, height .2s, font-size .2s;
+    background: var(--yellow) url(face.svg) 50% 30% / 135% no-repeat;
+    transition: left var(--speed, .9s) ease-in-out, top var(--speed, .9s) ease-in-out, width .2s, height .2s, rotate .3s, scale .3s;
     translate: -50% -50%;
   }
   .floater {
@@ -141,7 +141,7 @@
 <section class="screen" id="game">
   <div id="hud"><span id="score">0 / 10</span><span id="clock">0.0s</span></div>
   <div id="taunt">Tap the face 10 times. Easy, right?</div>
-  <div id="arena"><button id="target" aria-label="tap me">😜</button></div>
+  <div id="arena"><button id="target" aria-label="tap me"></button></div>
 </section>
 
 <!-- 4. Fake prize loading -->
@@ -225,7 +225,6 @@ const NAGS = [
   [45, 'Shall we call someone? 📞'],
   [60, 'A full minute. The family is watching. 👀'],
 ];
-const FACES = ['😜', '🤪', '😝', '🙃', '😏', '🤭', '😬', '🫣', '🥴', '😵‍💫'];
 
 let score, misses, startT, timer, mover, running, nagged;
 
@@ -235,6 +234,7 @@ function startGame() {
   $('score').textContent = `0 / ${GOAL}`;
   $('taunt').textContent = 'Tap the face 10 times. Easy, right?';
   setSize(110);
+  $('target').style.rotate = '0deg'; $('target').style.scale = '1 1';
   $('target').style.setProperty('--speed', '.9s');
   $('target').style.left = '50%'; $('target').style.top = '50%';
   startT = performance.now();
@@ -246,7 +246,6 @@ function startGame() {
 function setSize(px) {
   const t = $('target');
   t.style.width = t.style.height = px + 'px';
-  t.style.fontSize = px * .45 + 'px';
 }
 
 function moveTarget() {
@@ -280,7 +279,9 @@ $('target').addEventListener('pointerdown', e => {
   floater(e.clientX - ar.left, e.clientY - ar.top, '+1', '#ffd400');
   $('score').textContent = `${score} / ${GOAL}`;
   $('taunt').textContent = TAUNTS[score - 1];
-  $('target').textContent = FACES[score % FACES.length];
+  // Spin and flip the face a bit on every hit.
+  $('target').style.rotate = (Math.random() * 60 - 30) + 'deg';
+  $('target').style.scale = Math.random() < .5 ? '-1 1' : '1 1';
   if (score >= GOAL) return endGame();
 
   // A bit harder every hit: smaller, faster, and it dodges immediately.
